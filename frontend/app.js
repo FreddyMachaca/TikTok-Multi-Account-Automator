@@ -530,8 +530,7 @@
       state.uploadRequestedAt = Date.now();
       state.running = true;
       setStartButton('running');
-      const data = await api('/upload', { method: 'POST' });
-      appendLogs([{ timestamp: new Date().toLocaleTimeString(), level: 'INFO', message: `Job iniciado: ${data.total_operations} operaciones` }]);
+      await api('/upload', { method: 'POST' });
       ensurePolling();
       await pollProgress();
     }

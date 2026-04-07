@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 import time
 from pathlib import Path
 from typing import Any
@@ -13,6 +14,29 @@ def render_description(template: str, values: dict[str, str]) -> str:
     for key, value in values.items():
         text = text.replace(f"{{{key}}}", str(value).strip())
     return " ".join(text.split()).strip()
+
+
+def _is_chrome_running() -> bool:
+    try:
+        result = subprocess.run(
+            ["tasklist", "/FI", "IMAGENAME eq chrome.exe"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        return "chrome.exe" in (result.stdout or "").lower()
+    except Exception:
+        return False
+
+
+def _compact_error_text(exc: Exception) -> str:
+    detail = str(exc).strip()
+    if not detail:
+        detail = exc.__class__.__name__
+    normalized = " ".join(detail.replace("\r", " ").replace("\n", " ").split())
+    if len(normalized) > 320:
+        return normalized[:317] + "..."
+    return normalized
 
 
 def upload_with_playwright(
@@ -45,6 +69,20 @@ def upload_with_playwright(
     user_data_dir = str(account["chrome_user_data_dir"])
     chrome_profile = str(account["chrome_profile"])
     video = Path(video_path).resolve()
+    profile_dir = Path(user_data_dir) / chrome_profile
+
+    if not Path(user_data_dir).exists():
+        return False, f"No existe User Data: {user_data_dir}", int(time.time() - start)
+
+    if not profile_dir.exists():
+        return False, f"No existe el perfil {chrome_profile} en {user_data_dir}", int(time.time() - start)
+
+    if _is_chrome_running():
+        return (
+            False,
+            f"Chrome esta abierto. Cierra todas las ventanas de Chrome antes de subir con el perfil {chrome_profile}",
+            int(time.time() - start),
+        )
 
     try:
         with sync_playwright() as playwright:
@@ -60,9 +98,14 @@ def upload_with_playwright(
                     ],
                 )
             except Exception as exc:
-                detail = str(exc).strip() or exc.__class__.__name__
-                if "user data" in detail.lower() or "profile" in detail.lower() or "lock" in detail.lower():
+                detail = _compact_error_text(exc)
+                detail_lower = detail.lower()
+                if "target page, context or browser has been closed" in detail_lower or "exitcode=21" in detail_lower:
+                    detail = f"Chrome se cerro al abrir el perfil {chrome_profile}. Cierra Chrome y prueba de nuevo"
+                elif "user data" in detail_lower or "profile" in detail_lower or "lock" in detail_lower:
                     detail = f"No se pudo abrir el perfil {chrome_profile}. Cierra Chrome en ese perfil. Detalle: {detail}"
+                elif "notimplementederror" in detail_lower:
+                    detail = f"Playwright no pudo iniciar correctamente para {chrome_profile}. Reinicia el backend y cierra Chrome"
                 return False, detail, int(time.time() - start)
             try:
                 page = context.pages[0] if context.pages else context.new_page()
@@ -99,5 +142,5 @@ def upload_with_playwright(
     except PlaywrightTimeoutError:
         return False, "timeout en la automatizacion", int(time.time() - start)
     except Exception as exc:
-        detail = str(exc).strip() or exc.__class__.__name__
+        detail = _compact_error_text(exc)
         return False, detail, int(time.time() - start)
