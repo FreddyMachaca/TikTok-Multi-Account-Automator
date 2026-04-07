@@ -1,0 +1,1290 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TikTok Multi-Account Automator</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;700&display=swap');
+
+    :root {
+      --bg: #fff8ef;
+      --surface: #ffffff;
+      --surface-soft: #fff3df;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --brand: #fe2c55;
+      --brand-dark: #d10f43;
+      --accent: #0f766e;
+      --accent-soft: #c8f3ef;
+      --sun: #ff9f1c;
+      --danger: #b91c1c;
+      --ok: #166534;
+      --radius-xl: 24px;
+      --radius-lg: 16px;
+      --radius-md: 12px;
+      --shadow: 0 20px 40px rgba(31, 41, 55, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at 10% 0%, #ffd8de 0%, rgba(255, 216, 222, 0) 40%), radial-gradient(circle at 90% 100%, #d2f6ff 0%, rgba(210, 246, 255, 0) 45%), var(--bg);
+      color: var(--ink);
+      font-family: "Space Grotesk", sans-serif;
+      padding: 28px;
+    }
+
+    .app {
+      max-width: 1300px;
+      margin: 0 auto;
+      display: grid;
+      gap: 18px;
+    }
+
+    .topbar {
+      background: linear-gradient(135deg, #ffedd5, #ffffff);
+      border-radius: var(--radius-xl);
+      padding: 18px 22px;
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .title-block h1 {
+      margin: 0;
+      font-family: "Bebas Neue", sans-serif;
+      letter-spacing: 1.2px;
+      font-size: clamp(36px, 6vw, 56px);
+      line-height: 0.95;
+    }
+
+    .title-block p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .status-pill {
+      background: var(--surface);
+      border-radius: 999px;
+      border: 2px solid #f3f4f6;
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .tab {
+      border: 0;
+      border-radius: 999px;
+      padding: 11px 18px;
+      background: #f7efe3;
+      color: #4b5563;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tab.active {
+      background: var(--brand);
+      color: white;
+      transform: translateY(-1px);
+    }
+
+    .panel {
+      display: none;
+      background: var(--surface);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow);
+      padding: 20px;
+      animation: showPanel 0.35s ease;
+    }
+
+    .panel.active {
+      display: block;
+    }
+
+    @keyframes showPanel {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .dashboard-hero {
+      display: grid;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .start-btn {
+      border: 0;
+      border-radius: 14px;
+      padding: 14px 22px;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      min-width: 260px;
+      transition: all 0.25s ease;
+      color: white;
+    }
+
+    .start-btn.idle {
+      background: var(--brand);
+    }
+
+    .start-btn.running {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+
+    .start-btn.retry {
+      background: #f97316;
+    }
+
+    .stop-btn {
+      border: 2px solid #e5e7eb;
+      background: transparent;
+      border-radius: 14px;
+      padding: 12px 18px;
+      font-weight: 700;
+      cursor: pointer;
+      color: #374151;
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .progress-shell {
+      border-radius: var(--radius-lg);
+      background: linear-gradient(180deg, #fff5f7, #fff);
+      padding: 14px;
+      border: 1px solid #ffe4e6;
+      margin-bottom: 16px;
+    }
+
+    .progress-track {
+      position: relative;
+      width: 100%;
+      height: 54px;
+      border-radius: 14px;
+      background: #ffe4ea;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 0;
+      height: 100%;
+      background: linear-gradient(90deg, #fe2c55, #ff6b35);
+      transition: width 0.5s ease;
+    }
+
+    .progress-label {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: #111827;
+      font-weight: 900;
+      font-size: 24px;
+      letter-spacing: 0.8px;
+    }
+
+    .progress-text {
+      margin: 10px 0 0;
+      font-size: 14px;
+      font-weight: 700;
+      color: #374151;
+    }
+
+    .current-task {
+      margin: 6px 0 0;
+      font-size: 13px;
+      color: #6b7280;
+      font-weight: 600;
+    }
+
+    .time-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(120px, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .time-card {
+      border-radius: 14px;
+      background: var(--surface-soft);
+      padding: 12px;
+      border: 1px solid #ffedd5;
+    }
+
+    .time-card h4 {
+      margin: 0;
+      font-size: 13px;
+      color: #7c2d12;
+      font-weight: 700;
+    }
+
+    .time-card p {
+      margin: 8px 0 0;
+      font-size: 18px;
+      font-weight: 800;
+      color: #111827;
+    }
+
+    .section-title {
+      margin: 0 0 10px;
+      font-size: 16px;
+      font-weight: 900;
+      color: #111827;
+    }
+
+    .account-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .account-card {
+      border-radius: 14px;
+      border: 1px solid #e5e7eb;
+      padding: 12px;
+      background: #fff;
+    }
+
+    .account-card h4 {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+
+    .mini-progress {
+      width: 100%;
+      height: 10px;
+      border-radius: 999px;
+      background: #f3f4f6;
+      overflow: hidden;
+      margin: 8px 0;
+    }
+
+    .mini-progress > span {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: linear-gradient(90deg, var(--accent), #14b8a6);
+      transition: width 0.4s ease;
+    }
+
+    .log-box {
+      border-radius: 14px;
+      background: #111827;
+      color: #e5e7eb;
+      min-height: 220px;
+      max-height: 320px;
+      overflow-y: auto;
+      padding: 12px;
+      font-family: Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    .summary {
+      margin-top: 16px;
+      border-radius: 16px;
+      border: 1px solid #fde68a;
+      background: #fffdf3;
+      padding: 14px;
+      display: none;
+      gap: 8px;
+    }
+
+    .summary.show {
+      display: grid;
+    }
+
+    .summary-line {
+      font-weight: 700;
+      color: #111827;
+      font-size: 14px;
+    }
+
+    .form-grid {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      margin-bottom: 14px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field label {
+      font-size: 13px;
+      font-weight: 800;
+      color: #374151;
+    }
+
+    .field input,
+    .field textarea,
+    .field select {
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-family: inherit;
+      font-size: 14px;
+      width: 100%;
+    }
+
+    .field textarea {
+      min-height: 88px;
+      resize: vertical;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .btn.primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn.secondary {
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    .btn.danger {
+      background: #ef4444;
+      color: white;
+    }
+
+    .row-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .accounts-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .account-row {
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      background: #fff;
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .account-row-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .account-name {
+      font-size: 16px;
+      font-weight: 800;
+      margin: 0;
+    }
+
+    .account-meta {
+      font-size: 13px;
+      color: #6b7280;
+      font-weight: 600;
+      margin: 2px 0 0;
+    }
+
+    .toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #374151;
+    }
+
+    .history-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .history-controls input,
+    .history-controls select {
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-family: inherit;
+      font-size: 13px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    thead {
+      background: #f9fafb;
+    }
+
+    th,
+    td {
+      text-align: left;
+      padding: 10px;
+      border-bottom: 1px solid #f3f4f6;
+      white-space: nowrap;
+    }
+
+    .badge {
+      border-radius: 999px;
+      padding: 4px 9px;
+      font-size: 11px;
+      font-weight: 800;
+      display: inline-block;
+    }
+
+    .badge.success {
+      background: #dcfce7;
+      color: var(--ok);
+    }
+
+    .badge.failed {
+      background: #fee2e2;
+      color: var(--danger);
+    }
+
+    .badge.pending,
+    .badge.uploading {
+      background: #ffedd5;
+      color: #9a3412;
+    }
+
+    .muted {
+      color: #6b7280;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    @media (max-width: 900px) {
+      body {
+        padding: 14px;
+      }
+
+      .topbar {
+        padding: 16px;
+      }
+
+      .time-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .start-btn {
+        min-width: 100%;
+      }
+
+      .stop-btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="title-block">
+        <h1>TikTok Automator</h1>
+        <p>Subida multi cuenta con progreso en tiempo real</p>
+      </div>
+      <div id="apiStatus" class="status-pill">API: verificando...</div>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab active" data-tab="dashboard">Panel Principal</button>
+      <button class="tab" data-tab="accounts">Cuentas</button>
+      <button class="tab" data-tab="settings">Configuracion</button>
+      <button class="tab" data-tab="history">Historial</button>
+    </nav>
+
+    <section id="dashboard" class="panel active">
+      <div class="dashboard-hero">
+        <div class="hero-actions">
+          <button id="startBtn" class="start-btn idle">INICIAR SUBIDA</button>
+          <button id="stopBtn" class="stop-btn">DETENER</button>
+        </div>
+        <div id="videosInfo" class="note">Videos detectados: 0</div>
+      </div>
+
+      <div class="progress-shell">
+        <div class="progress-track">
+          <div id="progressFill" class="progress-fill"></div>
+          <div id="progressPercent" class="progress-label">0%</div>
+        </div>
+        <p id="progressText" class="progress-text">0 de 0 operaciones completadas</p>
+        <p id="currentTask" class="current-task">Sin actividad</p>
+      </div>
+
+      <div class="time-grid">
+        <div class="time-card">
+          <h4>Iniciado</h4>
+          <p id="timeStarted">--:--</p>
+        </div>
+        <div class="time-card">
+          <h4>Transcurrido</h4>
+          <p id="timeElapsed">0s</p>
+        </div>
+        <div class="time-card">
+          <h4>Restante</h4>
+          <p id="timeRemaining">calculando...</p>
+        </div>
+      </div>
+
+      <h3 class="section-title">Tarjetas por Cuenta</h3>
+      <div id="dashboardAccountCards" class="account-grid"></div>
+
+      <h3 class="section-title">Log en Vivo</h3>
+      <div id="liveLog" class="log-box"></div>
+
+      <div id="finalSummary" class="summary"></div>
+    </section>
+
+    <section id="accounts" class="panel">
+      <div class="row-actions" style="margin-bottom: 12px;">
+        <button id="refreshAccountsBtn" class="btn secondary">Recargar Cuentas</button>
+      </div>
+      <form id="newAccountForm" class="form-grid" style="margin-bottom: 14px;">
+        <div class="field">
+          <label for="accountName">Nombre</label>
+          <input id="accountName" required placeholder="Cuenta Principal" />
+        </div>
+        <div class="field">
+          <label for="accountUserDataDir">Ruta User Data Chrome</label>
+          <input id="accountUserDataDir" required placeholder="C:/Users/TuUsuario/AppData/Local/Google/Chrome/User Data" />
+        </div>
+        <div class="field">
+          <label for="accountProfile">Perfil de Chrome</label>
+          <input id="accountProfile" required placeholder="Profile 1" />
+        </div>
+        <div class="field">
+          <label for="accountSpeed">Velocidad</label>
+          <input id="accountSpeed" required type="number" step="0.1" min="1.0" max="1.3" value="1.0" />
+        </div>
+        <div class="field">
+          <label for="accountActive">Estado inicial</label>
+          <select id="accountActive">
+            <option value="1">Activa</option>
+            <option value="0">Inactiva</option>
+          </select>
+        </div>
+        <div class="row-actions" style="align-self: end;">
+          <button class="btn primary" type="submit">Agregar Cuenta</button>
+        </div>
+      </form>
+      <div id="accountsList" class="accounts-list"></div>
+    </section>
+
+    <section id="settings" class="panel">
+      <form id="settingsForm" class="form-grid">
+        <div class="field">
+          <label for="hashtags">Hashtags globales</label>
+          <input id="hashtags" />
+        </div>
+        <div class="field">
+          <label for="descriptionTemplate">Plantilla descripcion</label>
+          <input id="descriptionTemplate" />
+        </div>
+        <div class="field">
+          <label for="videosFolder">Carpeta videos</label>
+          <input id="videosFolder" />
+        </div>
+        <div class="field">
+          <label for="delayBetweenUploads">Delay entre subidas (seg)</label>
+          <input id="delayBetweenUploads" type="number" min="0" />
+        </div>
+        <div class="field">
+          <label for="maxDailyPerAccount">Max diarios por cuenta</label>
+          <input id="maxDailyPerAccount" type="number" min="1" />
+        </div>
+        <div class="field">
+          <label for="playwrightHeadless">Playwright headless</label>
+          <select id="playwrightHeadless">
+            <option value="false">false</option>
+            <option value="true">true</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="selectorUploadUrl">URL upload TikTok</label>
+          <input id="selectorUploadUrl" />
+        </div>
+        <div class="field">
+          <label for="selectorFileInput">Selector input file</label>
+          <input id="selectorFileInput" />
+        </div>
+        <div class="field">
+          <label for="selectorDescription">Selector descripcion</label>
+          <input id="selectorDescription" />
+        </div>
+        <div class="field">
+          <label for="selectorUploadButton">Selector boton publicar</label>
+          <input id="selectorUploadButton" />
+        </div>
+        <div class="field">
+          <label for="selectorSuccess">Selector exito</label>
+          <input id="selectorSuccess" />
+        </div>
+        <div class="field">
+          <label for="selectorCaptcha">Selector captcha</label>
+          <input id="selectorCaptcha" />
+        </div>
+        <div class="field">
+          <label for="previewWaitMs">Espera preview ms</label>
+          <input id="previewWaitMs" type="number" min="1000" />
+        </div>
+        <div class="field">
+          <label for="publishTimeoutSeconds">Timeout publicar seg</label>
+          <input id="publishTimeoutSeconds" type="number" min="10" />
+        </div>
+      </form>
+      <div class="row-actions" style="margin-top: 14px;">
+        <button id="saveSettingsBtn" class="btn primary">Guardar Configuracion</button>
+        <span id="settingsState" class="muted"></span>
+      </div>
+    </section>
+
+    <section id="history" class="panel">
+      <div class="history-controls">
+        <select id="historyAccountFilter">
+          <option value="">Todas las cuentas</option>
+        </select>
+        <input id="historyStartDate" type="date" />
+        <input id="historyEndDate" type="date" />
+        <select id="historyLimit">
+          <option value="100">100</option>
+          <option value="200" selected>200</option>
+          <option value="500">500</option>
+          <option value="1000">1000</option>
+        </select>
+        <button id="loadHistoryBtn" class="btn secondary">Filtrar</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Cuenta</th>
+              <th>Video</th>
+              <th>Estado</th>
+              <th>Duracion (s)</th>
+              <th>Error</th>
+            </tr>
+          </thead>
+          <tbody id="historyRows"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const state = {
+      accounts: [],
+      settings: {},
+      progressCursor: 0,
+      pollingTimer: null,
+      running: false,
+      lastSummary: null
+    };
+
+    const ui = {
+      apiStatus: document.getElementById('apiStatus'),
+      tabs: Array.from(document.querySelectorAll('.tab')),
+      panels: Array.from(document.querySelectorAll('.panel')),
+      startBtn: document.getElementById('startBtn'),
+      stopBtn: document.getElementById('stopBtn'),
+      videosInfo: document.getElementById('videosInfo'),
+      progressFill: document.getElementById('progressFill'),
+      progressPercent: document.getElementById('progressPercent'),
+      progressText: document.getElementById('progressText'),
+      currentTask: document.getElementById('currentTask'),
+      timeStarted: document.getElementById('timeStarted'),
+      timeElapsed: document.getElementById('timeElapsed'),
+      timeRemaining: document.getElementById('timeRemaining'),
+      dashboardAccountCards: document.getElementById('dashboardAccountCards'),
+      liveLog: document.getElementById('liveLog'),
+      finalSummary: document.getElementById('finalSummary'),
+      refreshAccountsBtn: document.getElementById('refreshAccountsBtn'),
+      newAccountForm: document.getElementById('newAccountForm'),
+      accountsList: document.getElementById('accountsList'),
+      saveSettingsBtn: document.getElementById('saveSettingsBtn'),
+      settingsState: document.getElementById('settingsState'),
+      loadHistoryBtn: document.getElementById('loadHistoryBtn'),
+      historyRows: document.getElementById('historyRows'),
+      historyAccountFilter: document.getElementById('historyAccountFilter'),
+      historyStartDate: document.getElementById('historyStartDate'),
+      historyEndDate: document.getElementById('historyEndDate'),
+      historyLimit: document.getElementById('historyLimit')
+    };
+
+    const settingsIds = {
+      hashtags: 'hashtags',
+      description_template: 'descriptionTemplate',
+      videos_folder: 'videosFolder',
+      delay_between_uploads: 'delayBetweenUploads',
+      max_daily_per_account: 'maxDailyPerAccount',
+      playwright_headless: 'playwrightHeadless',
+      tiktok_upload_url: 'selectorUploadUrl',
+      tiktok_file_input_selector: 'selectorFileInput',
+      tiktok_description_selector: 'selectorDescription',
+      tiktok_upload_button_selector: 'selectorUploadButton',
+      tiktok_success_selector: 'selectorSuccess',
+      tiktok_captcha_selector: 'selectorCaptcha',
+      tiktok_preview_wait_ms: 'previewWaitMs',
+      tiktok_publish_timeout_seconds: 'publishTimeoutSeconds'
+    };
+
+    async function api(path, options = {}) {
+      const request = {
+        method: options.method || 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(options.headers || {})
+        }
+      };
+      if (options.body !== undefined) {
+        request.body = JSON.stringify(options.body);
+      }
+      const response = await fetch(path, request);
+      if (!response.ok) {
+        let message = `Error ${response.status}`;
+        try {
+          const data = await response.json();
+          if (data.detail) {
+            message = data.detail;
+          }
+        } catch {}
+        throw new Error(message);
+      }
+      const text = await response.text();
+      if (!text) {
+        return null;
+      }
+      return JSON.parse(text);
+    }
+
+    function formatSeconds(total) {
+      if (total === null || total === undefined) {
+        return 'calculando...';
+      }
+      const value = Math.max(0, Number(total));
+      const h = Math.floor(value / 3600);
+      const m = Math.floor((value % 3600) / 60);
+      const s = Math.floor(value % 60);
+      if (h > 0) {
+        return `${h}h ${m}m ${s}s`;
+      }
+      if (m > 0) {
+        return `${m}m ${s}s`;
+      }
+      return `${s}s`;
+    }
+
+    function setStartButton(mode) {
+      ui.startBtn.classList.remove('idle', 'running', 'retry');
+      if (mode === 'running') {
+        ui.startBtn.classList.add('running');
+        ui.startBtn.disabled = true;
+        ui.startBtn.textContent = 'SUBIDA EN PROGRESO...';
+        return;
+      }
+      if (mode === 'retry') {
+        ui.startBtn.classList.add('retry');
+        ui.startBtn.disabled = false;
+        ui.startBtn.textContent = 'REINTENTAR FALLIDAS';
+        return;
+      }
+      ui.startBtn.classList.add('idle');
+      ui.startBtn.disabled = false;
+      ui.startBtn.textContent = 'INICIAR SUBIDA';
+    }
+
+    function appendLogs(items) {
+      if (!items || items.length === 0) {
+        return;
+      }
+      const lines = items.map(item => `${item.timestamp}  [${item.level}]  ${item.message}`);
+      const prefix = ui.liveLog.textContent ? '\n' : '';
+      ui.liveLog.textContent += prefix + lines.join('\n');
+      ui.liveLog.scrollTop = ui.liveLog.scrollHeight;
+    }
+
+    function clearLogs() {
+      ui.liveLog.textContent = '';
+    }
+
+    function renderDashboardCards(cards) {
+      if (!cards || cards.length === 0) {
+        ui.dashboardAccountCards.innerHTML = '<div class="muted">No hay cuentas activas configuradas.</div>';
+        return;
+      }
+      ui.dashboardAccountCards.innerHTML = cards.map(card => {
+        const totalDone = Number(card.completed) + Number(card.failed) + Number(card.skipped);
+        const percent = card.total > 0 ? Math.round((totalDone / card.total) * 100) : 0;
+        return `
+          <div class="account-card">
+            <h4>${card.name} (${Number(card.speed).toFixed(1)}x)</h4>
+            <div class="muted">Actual: ${card.current_video || 'esperando'}</div>
+            <div class="mini-progress"><span style="width:${percent}%;"></span></div>
+            <div class="muted">${totalDone} de ${card.total} completados</div>
+            <div class="muted">Estado: ${card.status}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderSummary(summary) {
+      if (!summary) {
+        ui.finalSummary.classList.remove('show');
+        ui.finalSummary.innerHTML = '';
+        return;
+      }
+      const total = Number(summary.total_processed || 0);
+      const success = Number(summary.success_count || 0);
+      const failed = Number(summary.failed_count || 0);
+      const skipped = Number(summary.skipped_count || 0);
+      const successPercent = total > 0 ? ((success / total) * 100).toFixed(1) : '0.0';
+      const failedItems = Array.isArray(summary.failed_items) ? summary.failed_items : [];
+      const failedHtml = failedItems.length > 0
+        ? failedItems.map(item => `<div class="summary-line">Fallo: ${item.video} | cuenta ${item.account_id} | ${item.error}</div>`).join('')
+        : '<div class="summary-line">Sin fallas registradas</div>';
+
+      ui.finalSummary.innerHTML = `
+        <div class="summary-line">Total procesado: ${total} / ${summary.total_planned}</div>
+        <div class="summary-line">Exitosas: ${success} (${successPercent}%)</div>
+        <div class="summary-line">Fallidas: ${failed}</div>
+        <div class="summary-line">Saltadas: ${skipped}</div>
+        <div class="summary-line">Tiempo total: ${formatSeconds(summary.elapsed_seconds)}</div>
+        ${failedHtml}
+      `;
+      ui.finalSummary.classList.add('show');
+    }
+
+    function applyProgress(data) {
+      const percent = Number(data.progress_percent || 0);
+      ui.progressFill.style.width = `${Math.max(0, Math.min(100, percent))}%`;
+      ui.progressPercent.textContent = `${Math.round(percent)}%`;
+      ui.progressText.textContent = `${data.done} de ${data.total} operaciones completadas`;
+      ui.currentTask.textContent = data.current_task || 'Sin actividad';
+      ui.timeStarted.textContent = data.start_time ? new Date(data.start_time).toLocaleTimeString() : '--:--';
+      ui.timeElapsed.textContent = formatSeconds(data.elapsed_seconds);
+      ui.timeRemaining.textContent = formatSeconds(data.remaining_seconds);
+      renderDashboardCards(data.account_cards || []);
+      if (Array.isArray(data.new_logs) && data.new_logs.length > 0) {
+        appendLogs(data.new_logs);
+      }
+      if (data.log_cursor !== undefined) {
+        state.progressCursor = Number(data.log_cursor);
+      }
+      if (data.running) {
+        state.running = true;
+        setStartButton('running');
+        return;
+      }
+      state.running = false;
+      if (data.summary) {
+        state.lastSummary = data.summary;
+        renderSummary(data.summary);
+        if (Number(data.summary.failed_count || 0) > 0) {
+          setStartButton('retry');
+        } else {
+          setStartButton('idle');
+        }
+      } else {
+        setStartButton('idle');
+      }
+    }
+
+    async function pollProgress() {
+      const data = await api(`/progress?since=${state.progressCursor}`);
+      applyProgress(data);
+      if (!data.running && state.pollingTimer) {
+        clearInterval(state.pollingTimer);
+        state.pollingTimer = null;
+      }
+    }
+
+    function ensurePolling() {
+      if (state.pollingTimer) {
+        return;
+      }
+      state.pollingTimer = setInterval(async () => {
+        try {
+          await pollProgress();
+        } catch (error) {
+          ui.apiStatus.textContent = `API: ${error.message}`;
+        }
+      }, 2000);
+    }
+
+    function stopPolling() {
+      if (!state.pollingTimer) {
+        return;
+      }
+      clearInterval(state.pollingTimer);
+      state.pollingTimer = null;
+    }
+
+    function buildStatusBadge(status) {
+      const normalized = String(status || '').toLowerCase();
+      return `<span class="badge ${normalized}">${normalized}</span>`;
+    }
+
+    async function loadAccounts() {
+      const accounts = await api('/accounts');
+      state.accounts = accounts;
+      ui.accountsList.innerHTML = accounts.length === 0
+        ? '<div class="muted">No hay cuentas registradas.</div>'
+        : accounts.map(account => {
+            const checked = account.active ? 'checked' : '';
+            return `
+              <div class="account-row">
+                <div class="account-row-top">
+                  <div>
+                    <p class="account-name">${account.name}</p>
+                    <p class="account-meta">Perfil: ${account.chrome_profile} | Subidas exitosas: ${account.success_uploads}</p>
+                    <p class="account-meta">User Data: ${account.chrome_user_data_dir}</p>
+                  </div>
+                  <div class="row-actions">
+                    <button class="btn danger" data-delete-account="${account.id}">Eliminar</button>
+                  </div>
+                </div>
+                <div class="form-grid" style="margin: 0;">
+                  <div class="field">
+                    <label>Velocidad</label>
+                    <input type="number" min="1.0" max="1.3" step="0.1" data-speed-account="${account.id}" value="${Number(account.speed).toFixed(1)}" />
+                  </div>
+                  <div class="field">
+                    <label>Activo</label>
+                    <div class="toggle">
+                      <input type="checkbox" data-active-account="${account.id}" ${checked} />
+                      <span>${account.active ? 'Activa' : 'Inactiva'}</span>
+                    </div>
+                  </div>
+                  <div class="row-actions" style="align-self:end;">
+                    <button class="btn primary" data-save-account="${account.id}">Guardar</button>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+      ui.historyAccountFilter.innerHTML = '<option value="">Todas las cuentas</option>' + accounts.map(account => `<option value="${account.id}">${account.name}</option>`).join('');
+      renderDashboardCards(accounts.map(account => ({
+        account_id: account.id,
+        name: account.name,
+        speed: account.speed,
+        total: 0,
+        completed: 0,
+        failed: 0,
+        skipped: 0,
+        current_video: '',
+        status: 'pendiente'
+      })));
+    }
+
+    async function saveAccount(accountId) {
+      const speedInput = document.querySelector(`[data-speed-account="${accountId}"]`);
+      const activeInput = document.querySelector(`[data-active-account="${accountId}"]`);
+      const payload = {
+        speed: Number(speedInput.value),
+        active: activeInput.checked
+      };
+      await api(`/accounts/${accountId}`, { method: 'PUT', body: payload });
+      await loadAccounts();
+    }
+
+    async function deleteAccount(accountId) {
+      const confirmed = confirm('Esta accion eliminara la cuenta y su historial. Deseas continuar?');
+      if (!confirmed) {
+        return;
+      }
+      await api(`/accounts/${accountId}`, { method: 'DELETE' });
+      await loadAccounts();
+      await loadHistory();
+    }
+
+    async function addAccount(event) {
+      event.preventDefault();
+      const payload = {
+        name: document.getElementById('accountName').value.trim(),
+        chrome_user_data_dir: document.getElementById('accountUserDataDir').value.trim(),
+        chrome_profile: document.getElementById('accountProfile').value.trim(),
+        speed: Number(document.getElementById('accountSpeed').value),
+        active: document.getElementById('accountActive').value === '1'
+      };
+      await api('/accounts', { method: 'POST', body: payload });
+      ui.newAccountForm.reset();
+      document.getElementById('accountSpeed').value = '1.0';
+      document.getElementById('accountActive').value = '1';
+      await loadAccounts();
+    }
+
+    async function loadSettings() {
+      const settings = await api('/settings');
+      state.settings = settings;
+      Object.keys(settingsIds).forEach(key => {
+        const field = document.getElementById(settingsIds[key]);
+        if (!field) {
+          return;
+        }
+        field.value = settings[key] ?? '';
+      });
+    }
+
+    async function saveSettings() {
+      const payload = {};
+      Object.keys(settingsIds).forEach(key => {
+        const field = document.getElementById(settingsIds[key]);
+        if (field) {
+          payload[key] = field.value;
+        }
+      });
+      await api('/settings', { method: 'POST', body: payload });
+      ui.settingsState.textContent = 'Configuracion guardada';
+      setTimeout(() => {
+        ui.settingsState.textContent = '';
+      }, 2000);
+      await loadVideos();
+    }
+
+    async function loadVideos() {
+      const data = await api('/videos');
+      ui.videosInfo.textContent = `Videos detectados: ${data.total} | Carpeta: ${data.folder}`;
+    }
+
+    async function loadHistory() {
+      const params = new URLSearchParams();
+      if (ui.historyAccountFilter.value) {
+        params.set('account_id', ui.historyAccountFilter.value);
+      }
+      if (ui.historyStartDate.value) {
+        params.set('start_date', ui.historyStartDate.value);
+      }
+      if (ui.historyEndDate.value) {
+        params.set('end_date', ui.historyEndDate.value);
+      }
+      params.set('limit', ui.historyLimit.value || '200');
+
+      const rows = await api(`/history?${params.toString()}`);
+      if (!rows || rows.length === 0) {
+        ui.historyRows.innerHTML = '<tr><td colspan="6" class="muted">Sin registros</td></tr>';
+        return;
+      }
+
+      ui.historyRows.innerHTML = rows.map(row => {
+        const date = row.uploaded_at ? new Date(row.uploaded_at).toLocaleString() : '-';
+        const error = row.error_message || '-';
+        return `
+          <tr>
+            <td>${date}</td>
+            <td>${row.account_name}</td>
+            <td>${row.video_filename}</td>
+            <td>${buildStatusBadge(row.status)}</td>
+            <td>${row.duration_seconds}</td>
+            <td>${error}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function startUpload() {
+      if (state.running) {
+        return;
+      }
+      if (state.lastSummary && Number(state.lastSummary.failed_count || 0) > 0) {
+        const ok = confirm(`Hay ${state.lastSummary.failed_count} fallidas del proceso anterior. Deseas iniciar un nuevo proceso?`);
+        if (!ok) {
+          return;
+        }
+      }
+      clearLogs();
+      renderSummary(null);
+      state.progressCursor = 0;
+      const data = await api('/upload', { method: 'POST' });
+      appendLogs([{ timestamp: new Date().toLocaleTimeString(), level: 'INFO', message: `Job iniciado: ${data.total_operations} operaciones` }]);
+      state.running = true;
+      setStartButton('running');
+      ensurePolling();
+      await pollProgress();
+    }
+
+    async function stopUpload() {
+      await api('/stop', { method: 'POST' });
+      appendLogs([{ timestamp: new Date().toLocaleTimeString(), level: 'WARN', message: 'Solicitud de detencion enviada' }]);
+    }
+
+    function setupTabs() {
+      ui.tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          ui.tabs.forEach(item => item.classList.remove('active'));
+          ui.panels.forEach(panel => panel.classList.remove('active'));
+          tab.classList.add('active');
+          const target = tab.dataset.tab;
+          document.getElementById(target).classList.add('active');
+        });
+      });
+    }
+
+    function setupEvents() {
+      ui.startBtn.addEventListener('click', async () => {
+        try {
+          await startUpload();
+        } catch (error) {
+          alert(error.message);
+          setStartButton('idle');
+        }
+      });
+
+      ui.stopBtn.addEventListener('click', async () => {
+        try {
+          await stopUpload();
+        } catch (error) {
+          alert(error.message);
+        }
+      });
+
+      ui.refreshAccountsBtn.addEventListener('click', async () => {
+        try {
+          await loadAccounts();
+        } catch (error) {
+          alert(error.message);
+        }
+      });
+
+      ui.newAccountForm.addEventListener('submit', async event => {
+        try {
+          await addAccount(event);
+        } catch (error) {
+          alert(error.message);
+        }
+      });
+
+      ui.accountsList.addEventListener('click', async event => {
+        const target = event.target;
+        const saveId = target.getAttribute('data-save-account');
+        const deleteId = target.getAttribute('data-delete-account');
+        try {
+          if (saveId) {
+            await saveAccount(Number(saveId));
+          }
+          if (deleteId) {
+            await deleteAccount(Number(deleteId));
+          }
+        } catch (error) {
+          alert(error.message);
+        }
+      });
+
+      ui.saveSettingsBtn.addEventListener('click', async () => {
+        try {
+          await saveSettings();
+        } catch (error) {
+          alert(error.message);
+        }
+      });
+
+      ui.loadHistoryBtn.addEventListener('click', async () => {
+        try {
+          await loadHistory();
+        } catch (error) {
+          alert(error.message);
+        }
+      });
+    }
+
+    async function refreshHealth() {
+      try {
+        await api('/health');
+        ui.apiStatus.textContent = 'API: conectada';
+      } catch (error) {
+        ui.apiStatus.textContent = `API: ${error.message}`;
+      }
+    }
+
+    async function bootstrap() {
+      setupTabs();
+      setupEvents();
+      setStartButton('idle');
+
+      try {
+        await refreshHealth();
+        await loadSettings();
+        await loadAccounts();
+        await loadVideos();
+        await loadHistory();
+        const progress = await api('/progress?since=0');
+        applyProgress(progress);
+        if (progress.running) {
+          ensurePolling();
+        }
+      } catch (error) {
+        ui.apiStatus.textContent = `API: ${error.message}`;
+      }
+    }
+
+    bootstrap();
+    window.addEventListener('beforeunload', () => stopPolling());
+  </script>
+</body>
+</html>
