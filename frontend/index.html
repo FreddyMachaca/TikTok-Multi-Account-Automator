@@ -183,6 +183,29 @@
       font-weight: 500;
     }
 
+    .help-card {
+      border: 1px solid #fde68a;
+      background: #fffbeb;
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+    }
+
+    .help-card h4 {
+      margin: 0 0 8px;
+      font-size: 15px;
+      font-weight: 900;
+      color: #92400e;
+    }
+
+    .help-card p {
+      margin: 6px 0;
+      font-size: 13px;
+      color: #374151;
+      line-height: 1.45;
+      font-weight: 600;
+    }
+
     .progress-shell {
       border-radius: var(--radius-lg);
       background: linear-gradient(180deg, #fff5f7, #fff);
@@ -604,6 +627,17 @@
     <section id="accounts" class="panel">
       <div class="row-actions" style="margin-bottom: 12px;">
         <button id="refreshAccountsBtn" class="btn secondary">Recargar Cuentas</button>
+      </div>
+      <div class="help-card">
+        <h4>Como obtener los datos de Chrome y llenar los campos</h4>
+        <p>1. Abre Chrome en el perfil que ya tiene sesion de TikTok.</p>
+        <p>2. Escribe chrome://version/ y busca la linea Profile Path.</p>
+        <p>3. Copia el Profile Path completo. Ejemplo: C:/Users/TuUsuario/AppData/Local/Google/Chrome/User Data/Profile 1</p>
+        <p>4. Ruta User Data Chrome: pega solo hasta User Data. Ejemplo: C:/Users/TuUsuario/AppData/Local/Google/Chrome/User Data</p>
+        <p>5. Perfil de Chrome: pega solo el nombre final del perfil. Ejemplo: Profile 1 o Default</p>
+        <p>6. Nombre: alias de la cuenta para identificarla en el panel.</p>
+        <p>7. Velocidad: 1.0, 1.1 o 1.2. Estado inicial: Activa si quieres que suba ahora.</p>
+        <p>8. Tipo de cuenta: Principal o Secundaria segun tu estrategia de plantillas.</p>
       </div>
       <form id="newAccountForm" class="form-grid" style="margin-bottom: 14px;">
         <div class="field">
