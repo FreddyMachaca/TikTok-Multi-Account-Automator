@@ -8,8 +8,11 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import sync_playwright
 
 
-def render_description(template: str, title: str, hashtags: str) -> str:
-    return template.replace("{title}", title).replace("{hashtags}", hashtags).strip()
+def render_description(template: str, values: dict[str, str]) -> str:
+    text = str(template)
+    for key, value in values.items():
+        text = text.replace(f"{{{key}}}", str(value).strip())
+    return " ".join(text.split()).strip()
 
 
 def upload_with_playwright(

@@ -629,6 +629,13 @@
             <option value="0">Inactiva</option>
           </select>
         </div>
+        <div class="field">
+          <label for="accountIsPrimary">Tipo de cuenta</label>
+          <select id="accountIsPrimary">
+            <option value="0">Secundaria</option>
+            <option value="1">Principal</option>
+          </select>
+        </div>
         <div class="row-actions" style="align-self: end;">
           <button class="btn primary" type="submit">Agregar Cuenta</button>
         </div>
@@ -639,12 +646,28 @@
     <section id="settings" class="panel">
       <form id="settingsForm" class="form-grid">
         <div class="field">
-          <label for="hashtags">Hashtags globales</label>
-          <input id="hashtags" />
+          <label for="brandHashtag">Hashtag de marca obligatorio</label>
+          <input id="brandHashtag" />
         </div>
         <div class="field">
-          <label for="descriptionTemplate">Plantilla descripcion</label>
-          <input id="descriptionTemplate" />
+          <label for="fixedLocationHashtags">Hashtags fijos (orden)</label>
+          <input id="fixedLocationHashtags" />
+        </div>
+        <div class="field">
+          <label for="primaryYoutubeMention">Mencion YouTube principal</label>
+          <input id="primaryYoutubeMention" />
+        </div>
+        <div class="field">
+          <label for="secondaryPrimaryMention">Mencion principal para secundarias</label>
+          <input id="secondaryPrimaryMention" />
+        </div>
+        <div class="field">
+          <label for="primaryDescriptionTemplate">Plantilla principal</label>
+          <input id="primaryDescriptionTemplate" />
+        </div>
+        <div class="field">
+          <label for="secondaryDescriptionTemplate">Plantilla secundaria</label>
+          <input id="secondaryDescriptionTemplate" />
         </div>
         <div class="field">
           <label for="videosFolder">Carpeta videos</label>
@@ -778,8 +801,12 @@
     };
 
     const settingsIds = {
-      hashtags: 'hashtags',
-      description_template: 'descriptionTemplate',
+      brand_hashtag: 'brandHashtag',
+      fixed_location_hashtags: 'fixedLocationHashtags',
+      primary_youtube_mention: 'primaryYoutubeMention',
+      secondary_primary_mention: 'secondaryPrimaryMention',
+      primary_description_template: 'primaryDescriptionTemplate',
+      secondary_description_template: 'secondaryDescriptionTemplate',
       videos_folder: 'videosFolder',
       delay_between_uploads: 'delayBetweenUploads',
       max_daily_per_account: 'maxDailyPerAccount',
@@ -1006,16 +1033,18 @@
         ? '<div class="muted">No hay cuentas registradas.</div>'
         : accounts.map(account => {
             const checked = account.active ? 'checked' : '';
+            const primaryChecked = account.is_primary ? 'checked' : '';
             const safeName = escapeHtml(account.name);
             const safeProfile = escapeHtml(account.chrome_profile);
             const safeUserData = escapeHtml(account.chrome_user_data_dir);
+            const tipo = account.is_primary ? 'Principal' : 'Secundaria';
             return `
               <div class="account-row">
                 <div class="account-row-top">
                   <div>
-                    <p class="account-name">${account.name}</p>
-                    <p class="account-meta">Perfil: ${account.chrome_profile} | Subidas exitosas: ${account.success_uploads}</p>
-                    <p class="account-meta" title="${safeUserData}">User Data: ${account.chrome_user_data_dir}</p>
+                    <p class="account-name">${safeName}</p>
+                    <p class="account-meta">Tipo: ${tipo} | Perfil: ${safeProfile} | Subidas exitosas: ${account.success_uploads}</p>
+                    <p class="account-meta" title="${safeUserData}">User Data: ${safeUserData}</p>
                   </div>
                   <div class="row-actions">
                     <button class="btn danger" data-delete-account="${account.id}">Eliminar</button>
@@ -1043,6 +1072,13 @@
                     <div class="toggle">
                       <input type="checkbox" data-active-account="${account.id}" ${checked} />
                       <span>${account.active ? 'Activa' : 'Inactiva'}</span>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label>Cuenta principal</label>
+                    <div class="toggle">
+                      <input type="checkbox" data-primary-account="${account.id}" ${primaryChecked} />
+                      <span>${account.is_primary ? 'Principal' : 'Secundaria'}</span>
                     </div>
                   </div>
                   <div class="row-actions" style="align-self:end;">
@@ -1073,6 +1109,7 @@
       const userDataInput = document.querySelector(`[data-userdata-account="${accountId}"]`);
       const speedInput = document.querySelector(`[data-speed-account="${accountId}"]`);
       const activeInput = document.querySelector(`[data-active-account="${accountId}"]`);
+      const primaryInput = document.querySelector(`[data-primary-account="${accountId}"]`);
 
       const name = nameInput.value.trim();
       const chromeProfile = profileInput.value.trim();
@@ -1092,7 +1129,8 @@
         chrome_profile: chromeProfile,
         chrome_user_data_dir: chromeUserDataDir,
         speed,
-        active: activeInput.checked
+        active: activeInput.checked,
+        is_primary: primaryInput.checked
       };
 
       let originalText = '';
@@ -1132,12 +1170,14 @@
         chrome_user_data_dir: document.getElementById('accountUserDataDir').value.trim(),
         chrome_profile: document.getElementById('accountProfile').value.trim(),
         speed: Number(document.getElementById('accountSpeed').value),
-        active: document.getElementById('accountActive').value === '1'
+        active: document.getElementById('accountActive').value === '1',
+        is_primary: document.getElementById('accountIsPrimary').value === '1'
       };
       await api('/accounts', { method: 'POST', body: payload });
       ui.newAccountForm.reset();
       document.getElementById('accountSpeed').value = '1.0';
       document.getElementById('accountActive').value = '1';
+      document.getElementById('accountIsPrimary').value = '0';
       await loadAccounts();
     }
 

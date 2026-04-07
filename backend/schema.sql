@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS accounts (
   chrome_user_data_dir TEXT NOT NULL,
   speed DECIMAL(3,2) NOT NULL DEFAULT 1.00,
   active TINYINT(1) NOT NULL DEFAULT 1,
+  is_primary TINYINT(1) NOT NULL DEFAULT 0,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -36,6 +37,12 @@ INSERT INTO settings (setting_key, setting_value) VALUES
 ('delay_between_uploads','25'),
 ('videos_folder',''),
 ('max_daily_per_account','30'),
+('brand_hashtag','#BoliviaNewsBO'),
+('fixed_location_hashtags','#LaPazBolivia #Bolivia'),
+('primary_youtube_mention','@bolivianews-bo'),
+('secondary_primary_mention','@bolivia.news4'),
+('primary_description_template','{title} {youtube_mention} {fixed_location_hashtags} {brand_hashtag}'),
+('secondary_description_template','{title} {secondary_mention} {fixed_location_hashtags} {brand_hashtag}'),
 ('tiktok_upload_url','https://www.tiktok.com/upload'),
 ('tiktok_file_input_selector','input[type="file"]'),
 ('tiktok_description_selector','div[contenteditable="true"]'),

@@ -105,6 +105,8 @@ def _rows_to_dicts(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         item = {key: _serialize(value) for key, value in row.items()}
         if "active" in item:
             item["active"] = bool(item["active"])
+        if "is_primary" in item:
+            item["is_primary"] = bool(item["is_primary"])
         normalized.append(item)
     return normalized
 
@@ -122,6 +124,7 @@ def get_all_accounts() -> list[dict[str, Any]]:
                 a.chrome_user_data_dir,
                 a.speed,
                 a.active,
+                a.is_primary,
                 a.created_at,
                 COALESCE(SUM(CASE WHEN h.status = 'success' THEN 1 ELSE 0 END), 0) AS success_uploads
             FROM accounts a
@@ -143,7 +146,7 @@ def get_active_accounts() -> list[dict[str, Any]]:
     try:
         cursor.execute(
             """
-            SELECT id, name, chrome_profile, chrome_user_data_dir, speed, active, created_at
+            SELECT id, name, chrome_profile, chrome_user_data_dir, speed, active, is_primary, created_at
             FROM accounts
             WHERE active = 1
             ORDER BY created_at ASC
@@ -169,6 +172,7 @@ def get_account(account_id: int) -> dict[str, Any] | None:
                 a.chrome_user_data_dir,
                 a.speed,
                 a.active,
+                a.is_primary,
                 a.created_at,
                 COALESCE(SUM(CASE WHEN h.status = 'success' THEN 1 ELSE 0 END), 0) AS success_uploads
             FROM accounts a
@@ -193,8 +197,8 @@ def create_account(data: dict[str, Any]) -> dict[str, Any]:
     try:
         cursor.execute(
             """
-            INSERT INTO accounts (name, chrome_profile, chrome_user_data_dir, speed, active, created_at)
-            VALUES (%s, %s, %s, %s, %s, NOW())
+            INSERT INTO accounts (name, chrome_profile, chrome_user_data_dir, speed, active, is_primary, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s, NOW())
             """,
             (
                 data["name"],
@@ -202,9 +206,12 @@ def create_account(data: dict[str, Any]) -> dict[str, Any]:
                 data["chrome_user_data_dir"],
                 float(data.get("speed", 1.0)),
                 1 if bool(data.get("active", True)) else 0,
+                1 if bool(data.get("is_primary", False)) else 0,
             ),
         )
         account_id = cursor.lastrowid
+        if bool(data.get("is_primary", False)):
+            cursor.execute("UPDATE accounts SET is_primary = 0 WHERE id <> %s", (account_id,))
         conn.commit()
     finally:
         cursor.close()
@@ -222,15 +229,21 @@ def update_account(account_id: int, data: dict[str, Any]) -> dict[str, Any] | No
         "chrome_user_data_dir",
         "speed",
         "active",
+        "is_primary",
     }
     updates: list[str] = []
     values: list[Any] = []
+    requested_is_primary = False
     for key, value in data.items():
         if key not in allowed_fields or value is None:
             continue
         updates.append(f"{key} = %s")
         if key == "active":
             values.append(1 if bool(value) else 0)
+        elif key == "is_primary":
+            normalized_value = 1 if bool(value) else 0
+            values.append(normalized_value)
+            requested_is_primary = normalized_value == 1
         elif key == "speed":
             values.append(float(value))
         else:
@@ -245,9 +258,12 @@ def update_account(account_id: int, data: dict[str, Any]) -> dict[str, Any] | No
             f"UPDATE accounts SET {', '.join(updates)} WHERE id = %s",
             tuple(values),
         )
-        conn.commit()
         if cursor.rowcount == 0:
+            conn.rollback()
             return None
+        if requested_is_primary:
+            cursor.execute("UPDATE accounts SET is_primary = 0 WHERE id <> %s", (account_id,))
+        conn.commit()
     finally:
         cursor.close()
         conn.close()

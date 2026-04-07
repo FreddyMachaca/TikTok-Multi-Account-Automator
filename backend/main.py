@@ -65,6 +65,7 @@ class AccountCreatePayload(BaseModel):
     chrome_user_data_dir: str = Field(min_length=1)
     speed: float = Field(default=1.0, ge=1.0, le=1.3)
     active: bool = True
+    is_primary: bool = False
 
 
 class AccountUpdatePayload(BaseModel):
@@ -73,12 +74,19 @@ class AccountUpdatePayload(BaseModel):
     chrome_user_data_dir: str | None = Field(default=None, min_length=1)
     speed: float | None = Field(default=None, ge=1.0, le=1.3)
     active: bool | None = None
+    is_primary: bool | None = None
 
 
 def _default_settings() -> dict[str, Any]:
     return {
         "hashtags": "#viral #fyp #trending",
         "description_template": "{title} {hashtags}",
+        "brand_hashtag": "#BoliviaNewsBO",
+        "fixed_location_hashtags": "#LaPazBolivia #Bolivia",
+        "primary_youtube_mention": "@bolivianews-bo",
+        "secondary_primary_mention": "@bolivia.news4",
+        "primary_description_template": "{title}",
+        "secondary_description_template": "{title}",
         "delay_between_uploads": "25",
         "videos_folder": str(VIDEOS_DIR.resolve()),
         "max_daily_per_account": "15",
@@ -122,11 +130,67 @@ def _list_video_files(folder: Path) -> list[str]:
     return sorted(videos)
 
 
+def _join_caption_parts(parts: list[str]) -> str:
+    return " ".join(part.strip() for part in parts if str(part).strip()).strip()
+
+
+def _remove_tokens(text: str, tokens: list[str]) -> str:
+    cleaned = text
+    for token in tokens:
+        value = str(token).strip()
+        if value:
+            cleaned = cleaned.replace(value, " ")
+    return " ".join(cleaned.split()).strip()
+
+
+def _build_account_description(account: dict[str, Any], video_filename: str, settings: dict[str, str]) -> str:
+    title = Path(video_filename).stem.replace("_", " ").strip()
+    is_primary = bool(account.get("is_primary", False))
+
+    brand_hashtag = settings.get("brand_hashtag", "#BoliviaNewsBO").strip()
+    fixed_location_hashtags = settings.get("fixed_location_hashtags", "#LaPazBolivia #Bolivia").strip()
+    primary_youtube_mention = settings.get("primary_youtube_mention", "@bolivianews-bo").strip()
+    secondary_primary_mention = settings.get("secondary_primary_mention", "@bolivia.news4").strip()
+
+    mandatory_block = _join_caption_parts(
+        [
+            primary_youtube_mention if is_primary else secondary_primary_mention,
+            fixed_location_hashtags,
+            brand_hashtag,
+        ]
+    )
+
+    template_key = "primary_description_template" if is_primary else "secondary_description_template"
+    template_value = settings.get(template_key, "{title}")
+
+    raw_text = render_description(
+        template_value,
+        {
+            "title": title,
+            "brand_hashtag": brand_hashtag,
+            "fixed_location_hashtags": fixed_location_hashtags,
+            "youtube_mention": primary_youtube_mention,
+            "secondary_mention": secondary_primary_mention,
+            "mandatory_block": mandatory_block,
+        },
+    )
+
+    base_text = _remove_tokens(
+        raw_text,
+        [
+            mandatory_block,
+            brand_hashtag,
+            fixed_location_hashtags,
+            primary_youtube_mention,
+            secondary_primary_mention,
+        ],
+    )
+    return _join_caption_parts([base_text, mandatory_block])
+
+
 def _run_upload_job(accounts: list[dict[str, Any]], videos: list[str], settings: dict[str, str]) -> None:
     delay_between_uploads = max(0, _safe_int(settings.get("delay_between_uploads"), 25))
     max_daily = max(1, _safe_int(settings.get("max_daily_per_account"), 15))
-    hashtags = settings.get("hashtags", "#viral #fyp #trending")
-    template = settings.get("description_template", "{title} {hashtags}")
     videos_folder = _resolve_videos_folder(settings)
 
     total_operations = len(accounts) * len(videos)
@@ -181,8 +245,7 @@ def _run_upload_job(accounts: list[dict[str, Any]], videos: list[str], settings:
                     job_manager.mark_failed(account_id, video_filename, error_text, 0)
                     continue
 
-                title = Path(video_filename).stem.replace("_", " ").strip()
-                description = render_description(template, title, hashtags)
+                description = _build_account_description(account, video_filename, settings)
 
                 success = False
                 attempts = 0
