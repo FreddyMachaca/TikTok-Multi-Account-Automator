@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import subprocess
 import time
 from pathlib import Path
@@ -51,6 +52,35 @@ def _compact_error_text(exc: Exception) -> str:
     return normalized
 
 
+def _normalize_user_data_dir(value: str) -> str:
+    cleaned = str(value or "").strip().strip('"').strip("'")
+    cleaned = re.sub(
+        r"^\s*(?:user\s*data|ruta\s*user\s*data\s*chrome|profile\s*path)\s*:\s*",
+        "",
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+    cleaned = re.sub(r"^file:///", "", cleaned, flags=re.IGNORECASE)
+    slash_match = re.match(r"^/([a-zA-Z])/(.*)$", cleaned)
+    if slash_match:
+        cleaned = f"{slash_match.group(1).upper()}:/{slash_match.group(2)}"
+    return cleaned.strip()
+
+
+def _normalize_chrome_profile(value: str) -> str:
+    cleaned = str(value or "").strip().strip('"').strip("'")
+    cleaned = re.sub(
+        r"^\s*(?:perfil\s*de\s*chrome|chrome\s*profile|profile)\s*:\s*",
+        "",
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+    normalized = cleaned.replace("\\", "/").rstrip("/")
+    if "/" in normalized:
+        normalized = normalized.split("/")[-1]
+    return normalized.strip()
+
+
 def upload_with_playwright(
     account: dict[str, Any],
     video_path: str,
@@ -80,13 +110,13 @@ def upload_with_playwright(
     force_close_chrome = settings.get("force_close_chrome_before_upload", "true").lower() == "true"
     force_close_wait_seconds = int(settings.get("force_close_chrome_wait_seconds", "2"))
 
-    user_data_dir = str(account["chrome_user_data_dir"])
-    chrome_profile = str(account["chrome_profile"])
+    user_data_dir = _normalize_user_data_dir(str(account["chrome_user_data_dir"]))
+    chrome_profile = _normalize_chrome_profile(str(account["chrome_profile"]))
     video = Path(video_path).resolve()
     profile_dir = Path(user_data_dir) / chrome_profile
 
     if not Path(user_data_dir).exists():
-        return False, f"No existe User Data: {user_data_dir}", int(time.time() - start)
+        return False, f"No existe User Data valido: {user_data_dir}", int(time.time() - start)
 
     if not profile_dir.exists():
         return False, f"No existe el perfil {chrome_profile} en {user_data_dir}", int(time.time() - start)

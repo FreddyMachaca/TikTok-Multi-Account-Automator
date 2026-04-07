@@ -290,6 +290,28 @@
         .replaceAll("'", '&#39;');
     }
 
+    function normalizeUserDataDir(value) {
+      let cleaned = String(value ?? '').trim();
+      cleaned = cleaned.replace(/^(user\s*data|ruta\s*user\s*data\s*chrome|profile\s*path)\s*:\s*/i, '');
+      cleaned = cleaned.replace(/^file:\/\//i, '');
+      cleaned = cleaned.replace(/^\/([a-zA-Z]:[\\/])/, '$1');
+      const slashMatch = cleaned.match(/^\/([a-zA-Z])\/(.*)$/);
+      if (slashMatch) {
+        cleaned = `${slashMatch[1].toUpperCase()}:/${slashMatch[2]}`;
+      }
+      return cleaned.trim();
+    }
+
+    function normalizeChromeProfile(value) {
+      let cleaned = String(value ?? '').trim();
+      cleaned = cleaned.replace(/^(perfil\s*de\s*chrome|chrome\s*profile|profile)\s*:\s*/i, '');
+      const normalized = cleaned.replaceAll('\\', '/').replace(/\/+$/, '');
+      if (normalized.includes('/')) {
+        return normalized.split('/').pop().trim();
+      }
+      return normalized.trim();
+    }
+
     async function loadAccounts() {
       const accounts = await api('/accounts');
       state.accounts = accounts;
@@ -378,9 +400,12 @@
       const primaryInput = document.querySelector(`[data-primary-account="${accountId}"]`);
 
       const name = nameInput.value.trim();
-      const chromeProfile = profileInput.value.trim();
-      const chromeUserDataDir = userDataInput.value.trim();
+      const chromeProfile = normalizeChromeProfile(profileInput.value);
+      const chromeUserDataDir = normalizeUserDataDir(userDataInput.value);
       const speed = Number(speedInput.value);
+
+      profileInput.value = chromeProfile;
+      userDataInput.value = chromeUserDataDir;
 
       if (!name || !chromeProfile || !chromeUserDataDir) {
         throw new Error('Nombre, perfil y ruta User Data son obligatorios');
@@ -433,8 +458,8 @@
       event.preventDefault();
       const payload = {
         name: document.getElementById('accountName').value.trim(),
-        chrome_user_data_dir: document.getElementById('accountUserDataDir').value.trim(),
-        chrome_profile: document.getElementById('accountProfile').value.trim(),
+        chrome_user_data_dir: normalizeUserDataDir(document.getElementById('accountUserDataDir').value),
+        chrome_profile: normalizeChromeProfile(document.getElementById('accountProfile').value),
         speed: Number(document.getElementById('accountSpeed').value),
         active: document.getElementById('accountActive').value === '1',
         is_primary: document.getElementById('accountIsPrimary').value === '1'

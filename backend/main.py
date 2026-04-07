@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import threading
 import time
 from pathlib import Path
@@ -130,6 +131,61 @@ def _list_video_files(folder: Path) -> list[str]:
         if path.is_file() and path.suffix.lower() in SUPPORTED_VIDEO_EXTENSIONS
     ]
     return sorted(videos)
+
+
+def _normalize_user_data_dir(value: str) -> str:
+    cleaned = str(value or "").strip().strip('"').strip("'")
+    cleaned = re.sub(
+        r"^\s*(?:user\s*data|ruta\s*user\s*data\s*chrome|profile\s*path)\s*:\s*",
+        "",
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+    cleaned = re.sub(r"^file:///", "", cleaned, flags=re.IGNORECASE)
+    slash_match = re.match(r"^/([a-zA-Z])/(.*)$", cleaned)
+    if slash_match:
+        cleaned = f"{slash_match.group(1).upper()}:/{slash_match.group(2)}"
+    return cleaned.strip()
+
+
+def _normalize_chrome_profile(value: str) -> str:
+    cleaned = str(value or "").strip().strip('"').strip("'")
+    cleaned = re.sub(
+        r"^\s*(?:perfil\s*de\s*chrome|chrome\s*profile|profile)\s*:\s*",
+        "",
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+    normalized = cleaned.replace("\\", "/").rstrip("/")
+    if "/" in normalized:
+        normalized = normalized.split("/")[-1]
+    return normalized.strip()
+
+
+def _normalize_account_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    normalized = dict(payload)
+    if "chrome_user_data_dir" in normalized and normalized["chrome_user_data_dir"] is not None:
+        normalized["chrome_user_data_dir"] = _normalize_user_data_dir(str(normalized["chrome_user_data_dir"]))
+    if "chrome_profile" in normalized and normalized["chrome_profile"] is not None:
+        normalized["chrome_profile"] = _normalize_chrome_profile(str(normalized["chrome_profile"]))
+    return normalized
+
+
+def _sanitize_existing_accounts() -> None:
+    accounts = get_all_accounts()
+    for account in accounts:
+        account_id = int(account["id"])
+        current_user_data = str(account.get("chrome_user_data_dir", "")).strip()
+        current_profile = str(account.get("chrome_profile", "")).strip()
+        normalized_user_data = _normalize_user_data_dir(current_user_data)
+        normalized_profile = _normalize_chrome_profile(current_profile)
+        updates: dict[str, Any] = {}
+        if normalized_user_data and normalized_user_data != current_user_data:
+            updates["chrome_user_data_dir"] = normalized_user_data
+        if normalized_profile and normalized_profile != current_profile:
+            updates["chrome_profile"] = normalized_profile
+        if updates:
+            update_account(account_id, updates)
 
 
 def _join_caption_parts(parts: list[str]) -> str:
@@ -333,6 +389,7 @@ def _run_upload_job(accounts: list[dict[str, Any]], videos: list[str], settings:
 def on_startup() -> None:
     ensure_schema()
     ensure_default_settings(_default_settings())
+    _sanitize_existing_accounts()
 
 
 @app.get("/")
@@ -349,12 +406,14 @@ def list_accounts() -> list[dict[str, Any]]:
 
 @app.post("/accounts", status_code=201)
 def add_account(payload: AccountCreatePayload) -> dict[str, Any]:
-    return create_account(payload.model_dump())
+    normalized_payload = _normalize_account_payload(payload.model_dump())
+    return create_account(normalized_payload)
 
 
 @app.put("/accounts/{account_id}")
 def edit_account(account_id: int, payload: AccountUpdatePayload) -> dict[str, Any]:
-    account = update_account(account_id, payload.model_dump(exclude_none=True))
+    normalized_payload = _normalize_account_payload(payload.model_dump(exclude_none=True))
+    account = update_account(account_id, normalized_payload)
     if account is None:
         raise HTTPException(status_code=404, detail="Cuenta no encontrada")
     return account
