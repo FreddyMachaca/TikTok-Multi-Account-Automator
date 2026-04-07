@@ -35,7 +35,7 @@ INSERT INTO settings (setting_key, setting_value) VALUES
 ('description_template','{title} {hashtags}'),
 ('delay_between_uploads','25'),
 ('videos_folder',''),
-('max_daily_per_account','15'),
+('max_daily_per_account','30'),
 ('tiktok_upload_url','https://www.tiktok.com/upload'),
 ('tiktok_file_input_selector','input[type="file"]'),
 ('tiktok_description_selector','div[contenteditable="true"]'),

@@ -169,7 +169,7 @@ Cada cuenta debe usar un perfil distinto de Chrome con sesion ya iniciada en Tik
 
 1. Abre Chrome con un perfil.
 2. Inicia sesion en TikTok con esa cuenta.
-3. En esa misma ventana, abre chrome://version.
+3. En esa misma ventana, abre chrome://version
 4. Copia el valor de Profile Path.
 
 Ejemplo de Profile Path:
