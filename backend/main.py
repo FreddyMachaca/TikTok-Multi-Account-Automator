@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import os
 import re
 import threading
 import time
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -93,6 +95,9 @@ def _default_settings() -> dict[str, Any]:
         "max_daily_per_account": "15",
         "force_close_chrome_before_upload": "true",
         "force_close_chrome_wait_seconds": "2",
+        "clone_default_chrome_profile": "true",
+        "clone_default_chrome_profile_force_refresh": "false",
+        "automation_user_data_root": str((TEMP_DIR / "chrome_profiles").resolve()),
         "playwright_headless": os.getenv("PLAYWRIGHT_HEADLESS", "false"),
         "tiktok_upload_url": "https://www.tiktok.com/upload",
         "tiktok_file_input_selector": "input[type='file']",
@@ -103,6 +108,30 @@ def _default_settings() -> dict[str, Any]:
         "tiktok_preview_wait_ms": "12000",
         "tiktok_publish_timeout_seconds": "180",
     }
+
+
+def _ensure_windows_asyncio_policy() -> None:
+    if os.name != "nt":
+        return
+
+    proactor_policy_cls = getattr(asyncio, "WindowsProactorEventLoopPolicy", None)
+    selector_policy_cls = getattr(asyncio, "WindowsSelectorEventLoopPolicy", None)
+    if proactor_policy_cls is None:
+        return
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        current_policy = asyncio.get_event_loop_policy()
+    if selector_policy_cls is not None and isinstance(current_policy, selector_policy_cls):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            asyncio.set_event_loop_policy(proactor_policy_cls())
+        return
+
+    if not isinstance(current_policy, proactor_policy_cls):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            asyncio.set_event_loop_policy(proactor_policy_cls())
 
 
 def _safe_int(value: Any, default: int) -> int:
@@ -387,6 +416,7 @@ def _run_upload_job(accounts: list[dict[str, Any]], videos: list[str], settings:
 
 @app.on_event("startup")
 def on_startup() -> None:
+    _ensure_windows_asyncio_policy()
     ensure_schema()
     ensure_default_settings(_default_settings())
     _sanitize_existing_accounts()

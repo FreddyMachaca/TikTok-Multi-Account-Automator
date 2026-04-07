@@ -7,6 +7,20 @@ import uuid
 from pathlib import Path
 
 
+def _compact_ffmpeg_error_text(raw: str) -> str:
+    text = (raw or "").strip()
+    if not text:
+        return "Error desconocido de FFmpeg"
+
+    lines = [line for line in text.splitlines() if line.strip()]
+    if len(lines) > 35:
+        lines = lines[-35:]
+    compact = "\n".join(lines)
+    if len(compact) > 2400:
+        compact = compact[-2400:]
+    return compact
+
+
 def _build_atempo(speed: float) -> str:
     remaining = float(speed)
     parts: list[str] = []
@@ -58,10 +72,17 @@ def process_video_speed(video_path: str, speed: float, temp_dir: str) -> str:
         str(output_path),
     ]
 
-    process = subprocess.run(cmd, capture_output=True, text=True)
+    process = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     if process.returncode != 0:
-        detail = process.stderr.strip() or process.stdout.strip() or "Error desconocido de FFmpeg"
-        raise RuntimeError(detail)
+        raw = process.stderr or process.stdout or ""
+        detail = _compact_ffmpeg_error_text(raw)
+        raise RuntimeError(f"FFmpeg fallo (codigo {process.returncode})\n{detail}")
 
     return str(output_path)
 
