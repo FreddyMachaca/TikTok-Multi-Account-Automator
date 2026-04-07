@@ -37,6 +37,8 @@ INSERT INTO settings (setting_key, setting_value) VALUES
 ('delay_between_uploads','25'),
 ('videos_folder',''),
 ('max_daily_per_account','30'),
+('force_close_chrome_before_upload','true'),
+('force_close_chrome_wait_seconds','2'),
 ('brand_hashtag','#BoliviaNewsBO'),
 ('fixed_location_hashtags','#LaPazBolivia #Bolivia'),
 ('primary_youtube_mention','@bolivianews-bo'),

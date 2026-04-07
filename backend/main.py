@@ -90,6 +90,8 @@ def _default_settings() -> dict[str, Any]:
         "delay_between_uploads": "25",
         "videos_folder": str(VIDEOS_DIR.resolve()),
         "max_daily_per_account": "15",
+        "force_close_chrome_before_upload": "true",
+        "force_close_chrome_wait_seconds": "2",
         "playwright_headless": os.getenv("PLAYWRIGHT_HEADLESS", "false"),
         "tiktok_upload_url": "https://www.tiktok.com/upload",
         "tiktok_file_input_selector": "input[type='file']",

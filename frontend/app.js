@@ -50,6 +50,8 @@
       delay_between_uploads: 'delayBetweenUploads',
       max_daily_per_account: 'maxDailyPerAccount',
       playwright_headless: 'playwrightHeadless',
+      force_close_chrome_before_upload: 'forceCloseChromeBeforeUpload',
+      force_close_chrome_wait_seconds: 'forceCloseChromeWaitSeconds',
       tiktok_upload_url: 'selectorUploadUrl',
       tiktok_file_input_selector: 'selectorFileInput',
       tiktok_description_selector: 'selectorDescription',

@@ -164,6 +164,17 @@
           </select>
         </div>
         <div class="field">
+          <label for="forceCloseChromeBeforeUpload">Cerrar Chrome antes de subir</label>
+          <select id="forceCloseChromeBeforeUpload">
+            <option value="true">true</option>
+            <option value="false">false</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="forceCloseChromeWaitSeconds">Espera tras cerrar Chrome (seg)</label>
+          <input id="forceCloseChromeWaitSeconds" type="number" min="0" max="20" />
+        </div>
+        <div class="field">
           <label for="selectorUploadUrl">URL upload TikTok</label>
           <input id="selectorUploadUrl" />
         </div>

@@ -29,6 +29,18 @@ def _is_chrome_running() -> bool:
         return False
 
 
+def _terminate_chrome_processes() -> None:
+    try:
+        subprocess.run(
+            ["taskkill", "/F", "/T", "/IM", "chrome.exe"],
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+    except Exception:
+        pass
+
+
 def _compact_error_text(exc: Exception) -> str:
     detail = str(exc).strip()
     if not detail:
@@ -65,6 +77,8 @@ def upload_with_playwright(
     preview_wait_ms = int(settings.get("tiktok_preview_wait_ms", "12000"))
     publish_timeout_seconds = int(settings.get("tiktok_publish_timeout_seconds", "180"))
     headless = settings.get("playwright_headless", "false").lower() == "true"
+    force_close_chrome = settings.get("force_close_chrome_before_upload", "true").lower() == "true"
+    force_close_wait_seconds = int(settings.get("force_close_chrome_wait_seconds", "2"))
 
     user_data_dir = str(account["chrome_user_data_dir"])
     chrome_profile = str(account["chrome_profile"])
@@ -76,6 +90,11 @@ def upload_with_playwright(
 
     if not profile_dir.exists():
         return False, f"No existe el perfil {chrome_profile} en {user_data_dir}", int(time.time() - start)
+
+    if force_close_chrome and _is_chrome_running():
+        _terminate_chrome_processes()
+        if force_close_wait_seconds > 0:
+            time.sleep(force_close_wait_seconds)
 
     if _is_chrome_running():
         return (
@@ -143,4 +162,6 @@ def upload_with_playwright(
         return False, "timeout en la automatizacion", int(time.time() - start)
     except Exception as exc:
         detail = _compact_error_text(exc)
+        if "notimplementederror" in detail.lower():
+            detail = "Playwright fallo al iniciar Chrome en segundo plano. Reinicia backend y vuelve a intentar"
         return False, detail, int(time.time() - start)
