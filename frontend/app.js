@@ -4,7 +4,9 @@
       progressCursor: 0,
       pollingTimer: null,
       running: false,
-      lastSummary: null
+      lastSummary: null,
+      waitingJobStart: false,
+      uploadRequestedAt: 0
     };
 
     const ui = {
@@ -123,6 +125,17 @@
       ui.startBtn.textContent = 'INICIAR SUBIDA';
     }
 
+    function isWaitingStartupWindow(data) {
+      if (!state.waitingJobStart) {
+        return false;
+      }
+      const elapsed = Date.now() - state.uploadRequestedAt;
+      if (elapsed > 20000) {
+        return false;
+      }
+      return !data.running && Number(data.total || 0) === 0 && Number(data.done || 0) === 0;
+    }
+
     function appendLogs(items) {
       if (!items || items.length === 0) {
         return;
@@ -185,6 +198,17 @@
     }
 
     function applyProgress(data) {
+      if (data.running) {
+        state.waitingJobStart = false;
+      }
+
+      if (isWaitingStartupWindow(data)) {
+        state.running = true;
+        setStartButton('running');
+        ui.currentTask.textContent = 'Preparando job...';
+        return;
+      }
+
       const percent = Number(data.progress_percent || 0);
       ui.progressFill.style.width = `${Math.max(0, Math.min(100, percent))}%`;
       ui.progressPercent.textContent = `${Math.round(percent)}%`;
@@ -205,6 +229,7 @@
         setStartButton('running');
         return;
       }
+      state.waitingJobStart = false;
       state.running = false;
       if (data.summary) {
         state.lastSummary = data.summary;
@@ -222,7 +247,7 @@
     async function pollProgress() {
       const data = await api(`/progress?since=${state.progressCursor}`);
       applyProgress(data);
-      if (!data.running && state.pollingTimer) {
+      if (!data.running && !state.waitingJobStart && state.pollingTimer) {
         clearInterval(state.pollingTimer);
         state.pollingTimer = null;
       }
@@ -327,17 +352,19 @@
           }).join('');
 
       ui.historyAccountFilter.innerHTML = '<option value="">Todas las cuentas</option>' + accounts.map(account => `<option value="${account.id}">${account.name}</option>`).join('');
-      renderDashboardCards(accounts.map(account => ({
-        account_id: account.id,
-        name: account.name,
-        speed: account.speed,
-        total: 0,
-        completed: 0,
-        failed: 0,
-        skipped: 0,
-        current_video: '',
-        status: 'pendiente'
-      })));
+      if (!state.running) {
+        renderDashboardCards(accounts.map(account => ({
+          account_id: account.id,
+          name: account.name,
+          speed: account.speed,
+          total: 0,
+          completed: 0,
+          failed: 0,
+          skipped: 0,
+          current_video: '',
+          status: 'pendiente'
+        })));
+      }
     }
 
     async function saveAccount(accountId, buttonEl = null) {
@@ -499,10 +526,12 @@
       clearLogs();
       renderSummary(null);
       state.progressCursor = 0;
-      const data = await api('/upload', { method: 'POST' });
-      appendLogs([{ timestamp: new Date().toLocaleTimeString(), level: 'INFO', message: `Job iniciado: ${data.total_operations} operaciones` }]);
+      state.waitingJobStart = true;
+      state.uploadRequestedAt = Date.now();
       state.running = true;
       setStartButton('running');
+      const data = await api('/upload', { method: 'POST' });
+      appendLogs([{ timestamp: new Date().toLocaleTimeString(), level: 'INFO', message: `Job iniciado: ${data.total_operations} operaciones` }]);
       ensurePolling();
       await pollProgress();
     }
@@ -529,6 +558,8 @@
         try {
           await startUpload();
         } catch (error) {
+          state.waitingJobStart = false;
+          state.running = false;
           alert(error.message);
           setStartButton('idle');
         }

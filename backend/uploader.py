@@ -48,16 +48,22 @@ def upload_with_playwright(
 
     try:
         with sync_playwright() as playwright:
-            context = playwright.chromium.launch_persistent_context(
-                user_data_dir=user_data_dir,
-                channel="chrome",
-                headless=headless,
-                viewport={"width": 1440, "height": 900},
-                args=[
-                    f"--profile-directory={chrome_profile}",
-                    "--disable-blink-features=AutomationControlled",
-                ],
-            )
+            try:
+                context = playwright.chromium.launch_persistent_context(
+                    user_data_dir=user_data_dir,
+                    channel="chrome",
+                    headless=headless,
+                    viewport={"width": 1440, "height": 900},
+                    args=[
+                        f"--profile-directory={chrome_profile}",
+                        "--disable-blink-features=AutomationControlled",
+                    ],
+                )
+            except Exception as exc:
+                detail = str(exc).strip() or exc.__class__.__name__
+                if "user data" in detail.lower() or "profile" in detail.lower() or "lock" in detail.lower():
+                    detail = f"No se pudo abrir el perfil {chrome_profile}. Cierra Chrome en ese perfil. Detalle: {detail}"
+                return False, detail, int(time.time() - start)
             try:
                 page = context.pages[0] if context.pages else context.new_page()
                 page.goto(upload_url, wait_until="domcontentloaded", timeout=90000)
@@ -93,4 +99,5 @@ def upload_with_playwright(
     except PlaywrightTimeoutError:
         return False, "timeout en la automatizacion", int(time.time() - start)
     except Exception as exc:
-        return False, str(exc), int(time.time() - start)
+        detail = str(exc).strip() or exc.__class__.__name__
+        return False, detail, int(time.time() - start)

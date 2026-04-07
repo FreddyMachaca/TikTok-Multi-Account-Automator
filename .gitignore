@@ -4,3 +4,7 @@ __pycache__/
 backend/.env
 backend/.env.docker
 manual_extracted.txt
+videos/*
+!videos/.gitkeep
+temp/*
+!temp/.gitkeep

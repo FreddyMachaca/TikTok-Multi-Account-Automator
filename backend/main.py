@@ -195,7 +195,9 @@ def _run_upload_job(accounts: list[dict[str, Any]], videos: list[str], settings:
 
     total_operations = len(accounts) * len(videos)
     daily_success = {int(account["id"]): get_daily_success_count(int(account["id"])) for account in accounts}
-    job_manager.start_job(total_operations, accounts, videos)
+    if not job_manager.is_running():
+        job_manager.start_job(total_operations, accounts, videos)
+    job_manager.add_log("INFO", f"Iniciando procesamiento de {len(videos)} videos en {len(accounts)} cuentas")
 
     try:
         stop_all = False
@@ -213,6 +215,12 @@ def _run_upload_job(accounts: list[dict[str, Any]], videos: list[str], settings:
                     break
 
                 job_manager.set_current_task(f"{video_filename} -> {account_name}")
+                job_manager.add_log(
+                    "PROC",
+                    f"Preparando {video_filename} para {account_name}",
+                    account_id,
+                    video_filename,
+                )
 
                 if daily_success.get(account_id, 0) >= max_daily:
                     job_manager.mark_skipped(account_id, video_filename, "limite diario alcanzado")
@@ -287,7 +295,7 @@ def _run_upload_job(accounts: list[dict[str, Any]], videos: list[str], settings:
                     if attempts < 3 and not job_manager.should_stop():
                         job_manager.add_log(
                             "WARN",
-                            f"Fallo intento {attempts}/3 para {video_filename} en {account_name}. Reintento en 30s",
+                            f"Fallo intento {attempts}/3 para {video_filename} en {account_name}. Motivo: {last_error}. Reintento en 30s",
                             account_id,
                             video_filename,
                         )
@@ -306,6 +314,7 @@ def _run_upload_job(accounts: list[dict[str, Any]], videos: list[str], settings:
 
                 if delay_between_uploads > 0:
                     job_manager.set_current_task(f"Esperando {delay_between_uploads}s antes de la siguiente subida")
+                    job_manager.add_log("INFO", f"Delay de seguridad {delay_between_uploads}s")
                     time.sleep(delay_between_uploads)
 
         if job_manager.should_stop():
@@ -401,6 +410,10 @@ def start_upload() -> dict[str, Any]:
         if not videos:
             raise HTTPException(status_code=400, detail="No se encontraron videos .mp4 o .mov")
 
+        total_operations = len(videos) * len(accounts)
+        job_manager.start_job(total_operations, accounts, videos)
+        job_manager.add_log("INFO", "Job en cola, preparando entorno de subida")
+
         _upload_thread = threading.Thread(
             target=_run_upload_job,
             args=(accounts, videos, settings),
@@ -412,7 +425,7 @@ def start_upload() -> dict[str, Any]:
             "status": "iniciado",
             "videos": len(videos),
             "accounts": len(accounts),
-            "total_operations": len(videos) * len(accounts),
+            "total_operations": total_operations,
         }
 
 
