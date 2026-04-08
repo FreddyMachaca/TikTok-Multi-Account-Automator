@@ -4,6 +4,7 @@ import os
 import shutil
 import subprocess
 import uuid
+from functools import lru_cache
 from pathlib import Path
 
 
@@ -34,6 +35,14 @@ def _build_atempo(speed: float) -> str:
     return ",".join(parts)
 
 
+@lru_cache(maxsize=1)
+def _resolve_ffmpeg_binary() -> str:
+    binary = shutil.which("ffmpeg")
+    if binary is None:
+        raise RuntimeError("ffmpeg no esta disponible en el sistema")
+    return binary
+
+
 def process_video_speed(video_path: str, speed: float, temp_dir: str) -> str:
     speed = float(speed)
     if speed < 1.0 or speed > 1.3:
@@ -46,8 +55,7 @@ def process_video_speed(video_path: str, speed: float, temp_dir: str) -> str:
     if abs(speed - 1.0) < 1e-9:
         return str(source)
 
-    if shutil.which("ffmpeg") is None:
-        raise RuntimeError("ffmpeg no esta disponible en el sistema")
+    ffmpeg_binary = _resolve_ffmpeg_binary()
 
     target_dir = Path(temp_dir)
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -59,7 +67,11 @@ def process_video_speed(video_path: str, speed: float, temp_dir: str) -> str:
     atempo_filter = _build_atempo(speed)
 
     cmd = [
-        "ffmpeg",
+        ffmpeg_binary,
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-nostats",
         "-y",
         "-i",
         str(source),
@@ -74,13 +86,11 @@ def process_video_speed(video_path: str, speed: float, temp_dir: str) -> str:
 
     process = subprocess.run(
         cmd,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
     )
     if process.returncode != 0:
-        raw = process.stderr or process.stdout or ""
+        raw = (process.stderr or b"").decode("utf-8", errors="replace")
         detail = _compact_ffmpeg_error_text(raw)
         raise RuntimeError(f"FFmpeg fallo (codigo {process.returncode})\n{detail}")
 
